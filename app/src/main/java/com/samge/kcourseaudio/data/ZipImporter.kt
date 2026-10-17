@@ -8,6 +8,7 @@ import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.zip.ZipInputStream
+import java.nio.charset.Charset
 
 /** 导入状态（UI 订阅）。 */
 sealed class ImportState {
@@ -53,7 +54,7 @@ class ZipImporter(
                 conn.instanceFollowRedirects = false
                 conn.connectTimeout = 15000
                 conn.readTimeout = 60000
-                conn.setRequestProperty("User-Agent", "kcourse-audio-android/1.0")
+                conn.setRequestProperty("User-Agent", "local-audio-android/1.0")
                 val code = conn.responseCode
                 if (code == HttpURLConnection.HTTP_MOVED_PERM ||
                     code == HttpURLConnection.HTTP_MOVED_TEMP ||
@@ -107,10 +108,14 @@ class ZipImporter(
         target.mkdirs()
         var added = 0
         var skipped = 0
-        ZipInputStream(zip.inputStream().buffered(1 shl 16)).use { zis ->
+        // Windows 资源管理器打包的 zip：文件名为系统代码页（中文=GBK）且不置 UTF-8 标志位。
+        // ZipInputStream 的 charset 只作用于"无 UTF-8 标志"的条目；带标志的仍按 UTF-8 解。
+        // 因此固定传 GBK：Windows 中文包正确解码，标准 UTF-8 包（GitHub release 等）不受影响。
+        val zis = ZipInputStream(zip.inputStream().buffered(1 shl 16), zipCharset)
+        try {
             while (true) {
                 val e = zis.nextEntry ?: break
-                val name = e.name
+                val name = fixZipName(e.name)
                 if (e.isDirectory) {
                     if (isSafe(name)) File(target, name).mkdirs()
                     zis.closeEntry()
@@ -134,8 +139,43 @@ class ZipImporter(
                 }
                 zis.closeEntry()
             }
+        } finally {
+            zis.close()
         }
         return Pair(added, skipped)
+    }
+
+    /**
+     * Windows 资源管理器打包的 zip：文件名是 GBK 编码，且不置 UTF-8 标志位。
+     * 已在 unzipInto 中直接用 GBK charset 构造 ZipInputStream（仅影响无标志条目）。
+     */
+    private val zipCharset: Charset
+        get() = Charset.forName("GBK")
+
+    /**
+     * Android libcore 的 ZipInputStream 对无 UTF-8 标志的条目名固定按 CP437 解码
+     * （构造器 charset 参数在该路径不生效），Windows GBK 中文名因此显示为 ╓╨╬─ 类乱码。
+     * 修复：把解出的名字编回 CP437 得到原始字节，再按 GBK 解码。
+     * 纯 ASCII（含正常英文路径）与含替换符的名字原样返回。
+     */
+    companion object {
+        /** CP437→GBK 文件名修复（unzipLocal 等外部路径复用）。 */
+        fun fixZipName(name: String): String {
+        if (name.isEmpty() || name.all { it.code in 32..126 }) return name
+        if (name.contains('�')) return name
+        return try {
+            // libcore 按 CP437 解出的字符（如 U+2553 ╓）不在 Latin-1，
+            // 必须用 CP437 编回原始字节，再按 GBK 解码
+            val cp437 = Charset.forName("Cp437")
+            val gbk = Charset.forName("GBK")
+            val raw = name.toByteArray(cp437)
+            val fixed = String(raw, gbk)
+            // GBK 解出的名字必须比 CP437 版本更"像中文"：含 CJK 字符才采用
+            if (fixed.any { it.code in 0x4E00..0x9FFF }) fixed else name
+        } catch (ex: Exception) {
+            name
+        }
+        }
     }
 
     private fun isSafe(name: String): Boolean {

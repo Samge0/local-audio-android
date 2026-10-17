@@ -24,7 +24,8 @@ object DirMigrator {
         var moved = 0
         var skipped = 0
         val audioFiles = oldDir.walkTopDown()
-            .filter { it.isFile && it.extension.lowercase() in Library.AUDIO_EXT }
+            .filter { it.isFile && (it.extension.lowercase() in Library.AUDIO_EXT
+                || it.extension.lowercase() in Library.SUB_EXTS) }
             .toList()
         for (f in audioFiles) {
             try {

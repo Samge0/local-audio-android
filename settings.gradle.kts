@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "kcourse-audio-android"
+rootProject.name = "local-audio-android"
 include(":app")

@@ -1,7 +1,11 @@
-# kcourse-audio-android
+# local-audio-android
 
-「音频播放器」的 Android 客户端，与桌面 Web 版（kcourse-audio）功能对等：
+「音频播放器」的 Android 客户端，与桌面 Web 版（[local-audio](https://github.com/Samge0/local-audio)）功能对等：
 把任意音频按目录结构放入音频目录即可播放。
+
+> 🌐 **[在线宣传页](https://samge0.github.io/local-audio-android/)** — 功能、上手与 FAQ 一页看懂
+>
+> ⬇ **[下载 APK（推荐）](https://github.com/Samge0/local-audio-android/releases/latest)** — 到 Releases 页下载 APK 直接安装，无需自己编译。
 
 ## 功能
 
@@ -61,7 +65,7 @@ Android Studio 打开亦可（标准 Gradle 项目）。
 ## 项目结构
 
 ```
-app/src/main/java/com/samge/kcourseaudio/
+app/src/main/java/com/samge/localaudio/  (package id)
   App.kt / MainActivity.kt       entry + SAF pickers + temp cleanup
   player/
     PlayerService.kt             MediaSession foreground playback service

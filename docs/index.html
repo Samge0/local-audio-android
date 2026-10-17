@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="音频播放器 local-audio-android - 本地优先的 Android 音频播放器">
+  <title>音频播放器 - local-audio-android</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            page: "#101116",
+            surface: "#1C1E26",
+            panel: "#262936",
+            text: "#F2F2F7",
+            muted: "#A7AAB3",
+            brandStart: "#5472F0",
+            brandEnd: "#7B5CF0",
+            accent: "#00D992"
+          },
+          fontFamily: {
+            sans: ["Inter", "Noto Sans SC", "sans-serif"]
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --page: #101116;
+      --surface: #1C1E26;
+      --panel: #262936;
+      --text: #F2F2F7;
+      --muted: #A7AAB3;
+      --brand-start: #5472F0;
+      --brand-end: #7B5CF0;
+      --accent: #00D992;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      overflow-x: hidden;
+      background: var(--page);
+      color: var(--text);
+      font-family: Inter, "Noto Sans SC", sans-serif;
+    }
+    .brand-gradient {
+      background: linear-gradient(135deg, var(--brand-start), var(--brand-end));
+    }
+    .brand-text {
+      background: linear-gradient(135deg, #8fa2ff, #b39aff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .grid-glow {
+      background-image:
+        linear-gradient(rgba(255,255,255,.028) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.028) 1px, transparent 1px);
+      background-size: 32px 32px;
+      mask-image: linear-gradient(to bottom, black 10%, transparent 78%);
+    }
+    .glass {
+      background: rgba(38,41,54,.72);
+      border: 1px solid rgba(255,255,255,.1);
+      box-shadow: 0 20px 60px rgba(0,0,0,.28);
+      backdrop-filter: blur(18px);
+    }
+    .reveal {
+      animation: reveal .75s cubic-bezier(.2,.8,.2,1) both;
+    }
+    .reveal-delay { animation-delay: .12s; }
+    .reveal-delay-2 { animation-delay: .24s; }
+    @keyframes reveal {
+      from { opacity: 0; transform: translateY(18px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes spin-record { to { transform: rotate(360deg); } }
+    .record-spin { animation: spin-record 11s linear infinite; }
+    .record-ring {
+      background:
+        radial-gradient(circle at center, #262936 0 10%, #101116 10.5% 13%, transparent 13.5%),
+        repeating-radial-gradient(circle at center, #292c37 0 1px, #171820 2px 4px);
+    }
+    details > summary { list-style: none; }
+    details > summary::-webkit-details-marker { display: none; }
+    details[open] .faq-plus { transform: rotate(45deg); }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+  <svg class="hidden" aria-hidden="true">
+    <symbol id="logo-mark" viewBox="0 0 108 108">
+      <rect x="0" y="0" width="108" height="108" rx="24" fill="#101010"></rect>
+      <path fill="#00D992" d="M62,26v34.5c0,0.9 -0.2,1.8 -0.5,2.6c-1.4,4.1 -5.6,7 -10.3,6.6c-5.2,-0.5 -9.2,-4.7 -9.2,-9.7c0,-5.4 4.6,-9.6 10.2,-9.6c1.6,0 3.1,0.4 4.4,1V38l-16,3.6v25.9c0,0.9 -0.2,1.8 -0.5,2.6c-1.4,4.1 -5.6,7 -10.3,6.6c-5.2,-0.5 -9.2,-4.7 -9.2,-9.7c0,-5.4 4.6,-9.6 10.2,-9.6c1.6,0 3.1,0.4 4.4,1V36c0,-2.3 1.6,-4.3 3.8,-4.8L62,26z"></path>
+    </symbol>
+  </svg>
+
+  <header class="sticky top-0 z-50 border-b border-white/10 bg-page/80 backdrop-blur-xl">
+    <nav class="mx-auto flex h-18 max-w-7xl items-center justify-between gap-4 px-5 sm:px-8">
+      <a href="#" class="flex min-w-0 items-center gap-3">
+        <svg class="h-10 w-10 shrink-0" viewBox="0 0 108 108"><use href="#logo-mark"></use></svg>
+        <span class="truncate text-sm font-bold tracking-tight text-text sm:text-base">音频播放器 <span class="font-medium text-muted">/ local-audio-android</span></span>
+      </a>
+      <div class="hidden items-center gap-7 text-sm text-muted md:flex">
+        <a class="transition hover:text-text" href="#features">功能</a>
+        <a class="transition hover:text-text" href="#how">上手</a>
+        <a class="transition hover:text-text" href="#compare">对比</a>
+        <a class="transition hover:text-text" href="#faq">FAQ</a>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="https://github.com/Samge0/local-audio-android" target="_blank" rel="noreferrer" aria-label="GitHub 仓库" class="hidden rounded-xl border border-white/10 bg-surface px-3 py-2 text-sm text-text transition hover:border-white/25 hover:bg-panel sm:inline-flex">
+          GitHub
+        </a>
+        <a href="https://github.com/Samge0/local-audio-android/releases/latest" target="_blank" rel="noreferrer" class="brand-gradient rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-brandStart/20 transition hover:scale-[1.02]">
+          下载最新 APK
+        </a>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section class="relative isolate overflow-hidden">
+      <div class="grid-glow absolute inset-0 -z-10"></div>
+      <div class="absolute left-1/2 top-0 -z-10 h-[480px] w-[720px] -translate-x-1/2 rounded-full bg-brandEnd/20 blur-[150px]"></div>
+      <div class="mx-auto grid max-w-7xl items-center gap-14 px-5 py-20 sm:px-8 md:grid-cols-2 md:py-28">
+        <div class="min-w-0">
+          <div class="reveal inline-flex items-center gap-2 rounded-full border border-white/10 bg-surface px-3 py-1.5 text-xs font-medium text-muted">
+            <span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
+            本地优先的 Android 音频播放器
+          </div>
+          <h1 class="reveal reveal-delay mt-7 max-w-4xl text-4xl font-extrabold leading-[1.14] tracking-tight text-text sm:text-5xl lg:text-6xl">
+            文件放进目录.<br>
+            <span class="brand-text">打开就能听.</span>
+          </h1>
+          <p class="reveal reveal-delay-2 mt-6 max-w-[65ch] text-base leading-8 text-muted sm:text-lg">
+            音频播放器是桌面 Web 版 local-audio 的 Android 客户端. 按目录即播放列表组织你的录音, 播客和有声书. 无账号, 无广告, 音频数据全程留在自己的设备上.
+          </p>
+          <div class="reveal reveal-delay-2 mt-8 flex flex-col gap-3 sm:flex-row">
+            <a href="https://github.com/Samge0/local-audio-android/releases/latest" target="_blank" rel="noreferrer" class="brand-gradient inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3.5 font-semibold text-white shadow-xl shadow-brandStart/25 transition-all hover:-translate-y-0.5">
+              下载最新 APK
+              <span aria-hidden="true">↓</span>
+            </a>
+            <a href="https://github.com/Samge0/local-audio-android" target="_blank" rel="noreferrer" class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-surface px-5 py-3.5 font-semibold text-text transition-all hover:border-white/25 hover:bg-panel">
+              查看 GitHub 仓库
+            </a>
+          </div>
+          <div class="mt-4 text-sm text-muted">
+            <span class="js-vinfo hidden"><span class="js-vtag"></span> · <span class="js-size"></span></span>
+            <span class="js-fallback">轻量单 APK</span>
+          </div>
+        </div>
+
+        <div class="reveal reveal-delay-2 mx-auto w-full max-w-md">
+          <div class="glass relative overflow-hidden rounded-[2rem] p-4">
+            <div class="flex items-center justify-between border-b border-white/10 px-2 pb-4">
+              <div>
+                <p class="text-xs text-muted">正在播放</p>
+                <p class="mt-1 text-sm font-semibold text-text">第 02 讲 - 本地音频的整理方法</p>
+              </div>
+              <button class="rounded-lg bg-panel px-2.5 py-1.5 text-xs text-muted">1.75x</button>
+            </div>
+            <div class="relative mx-auto my-8 flex h-48 w-48 items-center justify-center rounded-full border-[10px] border-[#0d0e12] bg-[#15161d] shadow-2xl shadow-black/60 record-ring">
+              <div class="record-spin absolute inset-3 rounded-full border border-white/10"></div>
+              <div class="absolute h-16 w-16 rounded-full border border-white/15 bg-panel"></div>
+              <div class="absolute h-3 w-3 rounded-full bg-accent shadow-[0_0_18px_#00D992]"></div>
+            </div>
+            <div class="space-y-3 px-2 pb-2">
+              <div class="h-1.5 overflow-hidden rounded-full bg-[#101116]">
+                <div class="h-full w-[62%] rounded-full brand-gradient"></div>
+              </div>
+              <div class="flex justify-between text-xs text-muted"><span>38:12</span><span>1:01:40</span></div>
+              <div class="flex items-center justify-center gap-7 py-2 text-text">
+                <span class="text-lg">↶ 15</span>
+                <span class="rounded-full p-3 brand-gradient text-xl leading-none shadow-lg shadow-brandStart/25">Ⅱ</span>
+                <span class="text-lg">15 ↷</span>
+              </div>
+            </div>
+            <div class="mt-3 flex items-center gap-3 rounded-xl border border-white/10 bg-[#181a22] p-3">
+              <span class="h-2 w-2 rounded-full bg-accent"></span>
+              <span class="min-w-0 flex-1 truncate text-xs text-muted">字幕: 第02讲.zh.srt</span>
+              <span class="text-xs text-text">已挂载</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="border-y border-white/10 bg-surface/45">
+      <div class="mx-auto max-w-7xl px-5 py-10 sm:px-8">
+        <p class="mx-auto max-w-4xl text-center text-lg leading-8 text-muted sm:text-xl">
+          不是又一个接管资料库的流媒体 App. 而是把你已经整理好的文件夹, 变成一个真正好用的播放器.
+        </p>
+      </div>
+    </section>
+
+    <section id="features" class="mx-auto max-w-7xl px-5 py-20 sm:px-8 md:py-28">
+      <div class="max-w-2xl">
+        <p class="text-sm font-semibold brand-text">为本地音频而做</p>
+        <h2 class="mt-3 text-3xl font-bold tracking-tight text-text sm:text-4xl">每一个常用细节, 都留在手边.</h2>
+        <p class="mt-5 max-w-[65ch] leading-8 text-muted">从文件整理到连续收听, 功能围绕真实的长音频使用场景设计.</p>
+      </div>
+
+      <div class="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <article class="rounded-2xl border border-white/10 bg-surface p-6 transition-all hover:-translate-y-1 hover:border-white/20">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-panel text-xl">☷</div>
+          <h3 class="mt-5 text-lg font-bold">目录即播放列表</h3>
+          <p class="mt-3 leading-7 text-sm text-muted">按目录分组, 组内自然排序, 让第 02 讲排在第 10 讲前面. 支持实时搜索, 分组折叠和折叠状态记忆.</p>
+        </article>
+        <article class="rounded-2xl border border-white/10 bg-surface p-6 transition-all hover:-translate-y-1 hover:border-white/20">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-panel text-xl">◷</div>
+          <h3 class="mt-5 text-lg font-bold">进度从不断线</h3>
+          <p class="mt-3 leading-7 text-sm text-muted">记住每首的上次播放位置和上次播放曲目. 重开自动恢复, 再长的课程或有声书也不怕被打断.</p>
+        </article>
+        <article class="rounded-2xl border border-white/10 bg-surface p-6 transition-all hover:-translate-y-1 hover:border-white/20">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-panel text-xl">1x</div>
+          <h3 class="mt-5 text-lg font-bold">细到 0.1 的倍速</h3>
+          <p class="mt-3 leading-7 text-sm text-muted">0.1x 到 4.0x. 预设弹层配合 ±0.1 微调, 支持 1.75x 这类两位精度, 并全局记忆.</p>
+        </article>
+        <article class="rounded-2xl border border-white/10 bg-surface p-6 transition-all hover:-translate-y-1 hover:border-white/20">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-panel text-xl">↻</div>
+          <h3 class="mt-5 text-lg font-bold">按你的方式循环</h3>
+          <p class="mt-3 leading-7 text-sm text-muted">顺序播放, 列表循环, 单曲循环和随机播放. 不同内容, 不必迁就同一种收听节奏.</p>
+        </article>
+        <article class="rounded-2xl border border-white/10 bg-surface p-6 transition-all hover:-translate-y-1 hover:border-white/20">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-panel text-xl">CC</div>
+          <h3 class="mt-5 text-lg font-bold">悬浮字幕跟词</h3>
+          <p class="mt-3 leading-7 text-sm text-muted">自动挂载同名 .srt, .vtt, .ass, .ssa 字幕, 支持语言后缀模糊匹配. 系统悬浮窗可拖动, 折叠, 并记住开关状态.</p>
+        </article>
+        <article class="rounded-2xl border border-white/10 bg-surface p-6 transition-all hover:-translate-y-1 hover:border-white/20">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-panel text-xl">◔</div>
+          <h3 class="mt-5 text-lg font-bold">定时停止</h3>
+          <p class="mt-3 leading-7 text-sm text-muted">预设 5, 10, 15, 30, 60 分钟, 也可自定义 1 到 720 分钟. 助眠时不必担心整夜循环.</p>
+        </article>
+        <article class="rounded-2xl border border-white/10 bg-surface p-6 transition-all hover:-translate-y-1 hover:border-white/20">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-panel text-xl">◉</div>
+          <h3 class="mt-5 text-lg font-bold">唱片与迷你控制条</h3>
+          <p class="mt-3 leading-7 text-sm text-muted">播放时黑胶唱片旋转. 列表滚动后, 顶部吸顶迷你控制条始终可暂停和切换.</p>
+        </article>
+        <article class="rounded-2xl border border-white/10 bg-surface p-6 transition-all hover:-translate-y-1 hover:border-white/20">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-panel text-xl">zip</div>
+          <h3 class="mt-5 text-lg font-bold">zip 链接导入</h3>
+          <p class="mt-3 leading-7 text-sm text-muted">粘贴 GitHub Release 直链或选择本机 zip. 自动下载解压, 保留目录, 跳过 __MACOSX 和隐藏文件, 同名同大小去重, 字幕一并导入并清理临时文件.</p>
+        </article>
+        <article class="rounded-2xl border border-white/10 bg-surface p-6 transition-all hover:-translate-y-1 hover:border-white/20">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-panel text-xl">⌁</div>
+          <h3 class="mt-5 text-lg font-bold">目录可迁移</h3>
+          <p class="mt-3 leading-7 text-sm text-muted">可用系统目录浏览器选择或手动输入路径. 换目录自动迁移旧音频, 同名不同大小以 " (n)" 后缀共存, 也支持二次确认后清空目录.</p>
+        </article>
+        <article class="rounded-2xl border border-white/10 bg-surface p-6 transition-all hover:-translate-y-1 hover:border-white/20">
+          <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-panel text-xl">↔</div>
+          <h3 class="mt-5 text-lg font-bold">播放不漏细节</h3>
+          <p class="mt-3 leading-7 text-sm text-muted">±15 秒快进快退, 上一首和下一首, 媒体通知栏控制, 拔耳机自动暂停, 以及深色和浅色自适应.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="how" class="border-y border-white/10 bg-[#15161d]">
+      <div class="mx-auto max-w-7xl px-5 py-20 sm:px-8 md:py-28">
+        <div class="max-w-2xl">
+          <p class="text-sm font-semibold brand-text">三步上手</p>
+          <h2 class="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">从文件夹到播放, 不用建立资料库.</h2>
+        </div>
+        <div class="mt-12 grid gap-5 md:grid-cols-3">
+          <article class="relative min-w-0 rounded-2xl border border-white/10 bg-surface p-7">
+            <span class="text-5xl font-extrabold brand-text">01</span>
+            <h3 class="mt-8 text-xl font-bold">选择音频目录</h3>
+            <p class="mt-3 leading-7 text-muted">默认使用应用专属目录, 无需任何存储权限.</p>
+          </article>
+          <article class="relative min-w-0 rounded-2xl border border-white/10 bg-surface p-7">
+            <span class="text-5xl font-extrabold brand-text">02</span>
+            <h3 class="mt-8 text-xl font-bold">把音频放进去</h3>
+            <p class="mt-3 leading-7 text-muted">直接复制文件, 或粘贴 zip 下载链接, 交给 App 下载和解压.</p>
+          </article>
+          <article class="relative min-w-0 rounded-2xl border border-white/10 bg-surface p-7">
+            <span class="text-5xl font-extrabold brand-text">03</span>
+            <h3 class="mt-8 text-xl font-bold">打开即播</h3>
+            <p class="mt-3 leading-7 text-muted">同名字幕自动挂载, 播放进度自动记忆.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="compare" class="mx-auto max-w-7xl px-5 py-20 sm:px-8 md:py-28">
+      <div class="max-w-2xl">
+        <p class="text-sm font-semibold brand-text">免费且开源</p>
+        <h2 class="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">听法不同, 控制权也不同.</h2>
+        <p class="mt-5 leading-8 text-muted">没有订阅方案, 没有内容围栏. 只专注于把本机文件听好.</p>
+      </div>
+      <div class="mt-12 overflow-x-auto rounded-2xl border border-white/10 bg-surface">
+        <table class="w-full min-w-[760px] border-collapse text-left text-sm">
+          <thead class="bg-panel text-text">
+            <tr>
+              <th class="px-6 py-4 font-semibold">方案</th>
+              <th class="px-6 py-4 font-semibold">进度记忆</th>
+              <th class="px-6 py-4 font-semibold">倍速</th>
+              <th class="px-6 py-4 font-semibold">悬浮字幕</th>
+              <th class="px-6 py-4 font-semibold">zip 链接导入</th>
+              <th class="px-6 py-4 font-semibold">数据位置</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-white/10 text-muted">
+            <tr>
+              <td class="px-6 py-5 font-medium text-text">在线音频平台</td>
+              <td class="px-6 py-5">仅平台内容</td>
+              <td class="px-6 py-5">常见</td>
+              <td class="px-6 py-5">无</td>
+              <td class="px-6 py-5">不适用</td>
+              <td class="px-6 py-5">平台云端</td>
+            </tr>
+            <tr>
+              <td class="px-6 py-5 font-medium text-text">通用本地播放器</td>
+              <td class="px-6 py-5">各家不一</td>
+              <td class="px-6 py-5">各家不一</td>
+              <td class="px-6 py-5">少见</td>
+              <td class="px-6 py-5">少见</td>
+              <td class="px-6 py-5">本机</td>
+            </tr>
+            <tr class="bg-brandStart/10">
+              <td class="px-6 py-5 font-bold text-text">本项目</td>
+              <td class="px-6 py-5 text-text">每首位置 + 上次曲目</td>
+              <td class="px-6 py-5 text-text">0.1x 到 4.0x 两位精度</td>
+              <td class="px-6 py-5 text-text">srt/vtt/ass/ssa 悬浮跟词</td>
+              <td class="px-6 py-5 text-text">直链/本机 zip</td>
+              <td class="px-6 py-5 text-text">本机自选目录</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="border-y border-white/10 bg-surface/45">
+      <div class="mx-auto grid max-w-7xl gap-10 px-5 py-20 sm:px-8 md:grid-cols-[1fr_1.35fr] md:py-24">
+        <div>
+          <p class="text-sm font-semibold brand-text">技术栈</p>
+          <h2 class="mt-3 text-3xl font-bold tracking-tight">原生 Android, 为持续播放准备.</h2>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div class="rounded-xl border border-white/10 bg-surface p-5">
+            <p class="text-xs text-muted">UI</p>
+            <p class="mt-2 font-semibold text-text">Kotlin + Jetpack Compose Material3</p>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-surface p-5">
+            <p class="text-xs text-muted">播放</p>
+            <p class="mt-2 font-semibold text-text">Media3 ExoPlayer + MediaSessionService</p>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-surface p-5">
+            <p class="text-xs text-muted">后台与字幕</p>
+            <p class="mt-2 font-semibold text-text">前台服务 + WindowManager 系统悬浮窗</p>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-surface p-5">
+            <p class="text-xs text-muted">构建环境</p>
+            <p class="mt-2 font-semibold text-text">minSdk 26 / targetSdk 35</p>
+            <p class="mt-1 text-sm text-muted">Gradle 8.13 / AGP 8.7.3 / Kotlin 2.0.21</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="mx-auto max-w-7xl px-5 py-20 sm:px-8">
+      <div class="rounded-3xl border border-white/10 bg-panel p-7 sm:p-10">
+        <p class="text-sm font-semibold brand-text">自行构建</p>
+        <h2 class="mt-3 text-3xl font-bold tracking-tight">也可以从源码开始.</h2>
+        <p class="mt-4 max-w-[65ch] leading-8 text-muted">克隆仓库后执行下方命令. 如只想安装使用, 可直接前往 GitHub Releases 下载最新 APK.</p>
+        <pre class="mt-7 overflow-x-auto rounded-xl border border-white/10 bg-[#101116] p-5 text-sm leading-7 text-[#d8dcff]"><code>./gradlew assembleDebug
+# 产物: app/build/outputs/apk/debug/app-debug.apk</code></pre>
+        <div class="mt-7 flex flex-col gap-3 sm:flex-row">
+          <a href="https://github.com/Samge0/local-audio-android/releases/latest" target="_blank" rel="noreferrer" class="brand-gradient inline-flex justify-center rounded-xl px-5 py-3 font-semibold text-white">下载最新 APK</a>
+          <a href="https://github.com/Samge0/local-audio-android" target="_blank" rel="noreferrer" class="inline-flex justify-center rounded-xl border border-white/10 bg-surface px-5 py-3 font-semibold text-text">浏览源码</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="faq" class="border-t border-white/10 bg-[#15161d]">
+      <div class="mx-auto max-w-4xl px-5 py-20 sm:px-8 md:py-28">
+        <div class="text-center">
+          <p class="text-sm font-semibold brand-text">FAQ</p>
+          <h2 class="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">常见问题.</h2>
+        </div>
+        <div class="mt-12 divide-y divide-white/10 rounded-2xl border border-white/10 bg-surface px-5 sm:px-7">
+          <details class="group py-5">
+            <summary class="flex cursor-pointer items-center justify-between gap-5 font-semibold text-text">需要什么权限？<span class="faq-plus text-2xl font-normal text-muted transition-transform">+</span></summary>
+            <p class="max-w-[65ch] pt-4 leading-7 text-muted">默认音频目录是应用专属存储, 无需任何存储权限. 选用公共目录时, Android 11+ 需授予 "所有文件访问". 悬浮窗字幕为可选权限, 可在系统设置授予. 联网权限仅用于 zip 链接下载.</p>
+          </details>
+          <details class="group py-5">
+            <summary class="flex cursor-pointer items-center justify-between gap-5 font-semibold text-text">字幕怎么匹配？<span class="faq-plus text-2xl font-normal text-muted transition-transform">+</span></summary>
+            <p class="max-w-[65ch] pt-4 leading-7 text-muted">与音频文件同名即可. 支持 .srt, .vtt, .ass, .ssa, 并支持语言后缀模糊匹配, 例如 "第01讲.zh.srt" 可对应 "第01讲.mp3".</p>
+          </details>
+          <details class="group py-5">
+            <summary class="flex cursor-pointer items-center justify-between gap-5 font-semibold text-text">换了目录, 旧的音频会丢吗？<span class="faq-plus text-2xl font-normal text-muted transition-transform">+</span></summary>
+            <p class="max-w-[65ch] pt-4 leading-7 text-muted">不会. App 会自动迁移旧音频: 同名同大小跳过, 同名不同大小加 " (n)" 后缀共存.</p>
+          </details>
+          <details class="group py-5">
+            <summary class="flex cursor-pointer items-center justify-between gap-5 font-semibold text-text">有桌面版吗？<span class="faq-plus text-2xl font-normal text-muted transition-transform">+</span></summary>
+            <p class="max-w-[65ch] pt-4 leading-7 text-muted">有. 桌面 Web 版为 <a href="https://github.com/Samge0/local-audio" target="_blank" rel="noreferrer" class="text-brandEnd hover:text-brandStart underline underline-offset-4 transition">local-audio</a> 项目, 功能对等. 本项目无 iOS 版.</p>
+          </details>
+          <details class="group py-5">
+            <summary class="flex cursor-pointer items-center justify-between gap-5 font-semibold text-text">zip 链接导入失败？<span class="faq-plus text-2xl font-normal text-muted transition-transform">+</span></summary>
+            <p class="max-w-[65ch] pt-4 leading-7 text-muted">请确认链接是直链, 例如 GitHub Release 资产直链. 导入目标为当前音频目录, 可在导入框指定子目录.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="mx-auto max-w-7xl px-5 py-20 sm:px-8">
+      <div class="relative overflow-hidden rounded-3xl border border-white/10 bg-surface px-7 py-12 text-center sm:px-12">
+        <div class="absolute inset-x-1/4 top-0 h-28 bg-brandEnd/20 blur-[70px]"></div>
+        <div class="relative">
+          <h2 class="text-3xl font-bold tracking-tight sm:text-4xl">把你的音频, 听回自己的节奏.</h2>
+          <p class="mx-auto mt-4 max-w-[65ch] leading-8 text-muted">目录是你的. 文件是你的. 收听进度和字幕, 也都留在你的设备上.</p>
+          <a href="https://github.com/Samge0/local-audio-android/releases/latest" target="_blank" rel="noreferrer" class="brand-gradient mt-8 inline-flex rounded-xl px-6 py-3.5 font-semibold text-white shadow-xl shadow-brandStart/25 transition hover:-translate-y-0.5">
+            下载最新 APK
+          </a>
+          <div class="mt-4 text-sm text-muted">
+            <span class="js-vinfo hidden"><span class="js-vtag"></span> · <span class="js-size"></span></span>
+            <span class="js-fallback">轻量单 APK</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-white/10">
+    <div class="mx-auto flex max-w-7xl flex-col gap-7 px-5 py-10 sm:px-8 md:flex-row md:items-center md:justify-between">
+      <a href="#" class="flex items-center gap-3">
+        <svg class="h-9 w-9" viewBox="0 0 108 108"><use href="#logo-mark"></use></svg>
+        <span class="font-semibold text-text">音频播放器</span>
+      </a>
+      <div class="flex flex-wrap gap-x-6 gap-y-3 text-sm text-muted">
+        <a class="transition hover:text-text" href="https://github.com/Samge0/local-audio-android" target="_blank" rel="noreferrer">GitHub 仓库</a>
+        <a class="transition hover:text-text" href="https://github.com/Samge0/local-audio-android/releases/latest" target="_blank" rel="noreferrer">下载 APK</a>
+        <a class="transition hover:text-text" href="https://samge0.github.io/local-audio-android/" target="_blank" rel="noreferrer">在线宣传页</a>
+        <span>MIT License</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    fetch("https://api.github.com/repos/Samge0/local-audio-android/releases/latest")
+      .then(function(response) {
+        if (!response.ok) throw new Error("Release unavailable");
+        return response.json();
+      })
+      .then(function(release) {
+        var apk = (release.assets || []).find(function(asset) {
+          return /\.apk$/i.test(asset.name || "");
+        });
+        if (!release.tag_name || !apk || typeof apk.size !== "number") throw new Error("APK asset unavailable");
+        var size = (apk.size / 1048576).toFixed(1) + " MB";
+        document.querySelectorAll(".js-vtag").forEach(function(node) {
+          node.textContent = release.tag_name;
+        });
+        document.querySelectorAll(".js-size").forEach(function(node) {
+          node.textContent = size;
+        });
+        document.querySelectorAll(".js-vinfo").forEach(function(node) {
+          node.classList.remove("hidden");
+        });
+        document.querySelectorAll(".js-fallback").forEach(function(node) {
+          node.classList.add("hidden");
+        });
+      })
+      .catch(function() {});
+  </script>
+</body>
+</html>

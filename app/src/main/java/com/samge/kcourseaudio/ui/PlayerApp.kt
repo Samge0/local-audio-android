@@ -168,7 +168,7 @@ fun PlayerApp(vm: MainViewModel, onPickZip: () -> Unit, onPickDir: () -> Unit) {
                         ui.loading -> item(key = "loading") { Box(Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) { Text("加载中…", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
                         ui.items.isEmpty() -> item(key = "empty") { Box(Modifier.fillParentMaxSize()) { EmptyBox(ui) } }
                         vis.isEmpty() -> item(key = "nores") { Box(Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) { Text("无匹配音频", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
-                        else -> trackListItems(vm, vis, q.isNotEmpty())
+                        else -> trackListItems(vm, vis, q.isNotEmpty(), vm.collapsed)
                     }
                 }
 
@@ -214,6 +214,38 @@ fun PlayerApp(vm: MainViewModel, onPickZip: () -> Unit, onPickDir: () -> Unit) {
     vm.toastMsg?.let { msg ->
         ToastView(msg) { vm.consumeToast() }
     }
+
+    // 悬浮窗权限引导弹窗（字幕需要，带跳转入口）
+    if (vm.showOverlayPerm) {
+        AlertDialog(
+            onDismissRequest = { vm.dismissOverlayPerm() },
+            title = { Text("开启字幕悬浮窗", fontSize = 15.sp) },
+            text = {
+                Column {
+                    Text(
+                        "字幕以悬浮窗形式显示在屏幕上，需要「显示在其他应用上层」权限。",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        "步骤：点击下方「去设置」→ 找到「音频播放器」→ 打开「显示在其他应用上层」开关 → 返回应用。",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.dismissOverlayPerm()
+                    vm.openOverlaySettings { }
+                }) { Text("去设置", fontSize = 13.sp, color = Accent, fontWeight = FontWeight.SemiBold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { vm.dismissOverlayPerm() }) { Text("暂不需要", fontSize = 13.sp) }
+            },
+        )
+    }
 }
 
 /** Mac 交通灯标题栏。 */
@@ -229,10 +261,10 @@ private fun MacTitleBar(onImport: () -> Unit, onDir: () -> Unit) {
             Box(Modifier.size(11.dp).clip(CircleShape).background(Color(0xFFFEBC2E)))
             Box(Modifier.size(11.dp).clip(CircleShape).background(Color(0xFF28C840)))
         }
-        // 中：标题（weight 伸展，视觉居中）
+        // 中：标题（weight 伸展，视觉居中）+ 动态版本号
         Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
             Text(
-                "音频播放器",
+                "音频播放器 " + com.samge.kcourseaudio.BuildConfig.VERSION_NAME,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -359,8 +391,8 @@ private fun androidx.compose.foundation.lazy.LazyListScope.trackListItems(
     vm: MainViewModel,
     vis: List<Track>,
     searching: Boolean,
+    collapsed: Set<String>,
 ) {
-    val collapsed = vm.collapsed
     // 预计算：每条记录是否为本组第一条（纯函数，无重组副作用）
     val firstOfGroup = HashSet<Int>()
     val countOfGroup = HashMap<String, Int>()
@@ -503,9 +535,12 @@ private fun GroupHeader(name: String, count: Int, folded: Boolean, onToggle: () 
 
 @Composable
 private fun TrackRow(vm: MainViewModel, t: Track) {
-    val isCur = vm.curId == t.id
+    // 读取 state：curId / playing 变化都会触发本行重组 → 选中态即时刷新
+    val curId = vm.curId
+    val playing = vm.playing
+    val isCur = curId == t.id
     val posSec = vm.posOf(t.id)
-    val rowBg = if (isCur) Color(0x2A5472F0) else Color.Transparent
+    val rowBg = if (isCur) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
     Row(
         Modifier
             .fillMaxWidth()
@@ -515,9 +550,18 @@ private fun TrackRow(vm: MainViewModel, t: Track) {
             .padding(horizontal = 8.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // 序号位：播放中显示 ▶ 图标（对齐 Web .idx.eq）
-        Box(Modifier.width(22.dp), contentAlignment = Alignment.Center) {
-            if (isCur && vm.playing) {
+        // 选中指示：左侧 accent 竖条（不依赖播放状态，点击即亮）
+        Box(
+            Modifier
+                .width(4.dp)
+                .height(30.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(if (isCur) Accent else Color.Transparent)
+        )
+        Spacer(Modifier.width(6.dp))
+        // 序号位：选中即显示 ▶（播放中加深）
+        Box(Modifier.width(20.dp), contentAlignment = Alignment.Center) {
+            if (isCur) {
                 Text("▶", fontSize = 10.sp, color = Accent, fontWeight = FontWeight.Bold)
             } else {
                 Text(
@@ -634,8 +678,10 @@ private fun PlayerBar(
                     if (hasSub) (if (vm.subOn) "字幕开" else "字幕关") else "字幕",
                     active = hasSub && vm.subOn,
                 ) {
-                    val ok = vm.toggleSub()
-                    if (!ok) vm.toast("当前音频没有字幕")
+                    when (vm.toggleSub()) {
+                        1 -> vm.toast("当前音频没有字幕")
+                        2 -> { /* 无权限：已弹引导窗，不切换状态 */ }
+                    }
                 }
                 Spacer(Modifier.weight(1f))
                 Chip(

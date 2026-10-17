@@ -12,3 +12,6 @@ app/release/
 *.apk
 *.keystore
 !debug.keystore
+.secrets/
+*.jks
+!debug.keystore

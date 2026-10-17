@@ -1,8 +1,27 @@
+import java.util.Base64
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
+
+// CI env vars (base64 keystore from GitHub secrets) > local keystore > debug fallback.
+// Reference: same signing strategy as PocketSite.
+val ciKeystoreB64 = System.getenv("KEYSTORE_BASE64")
+val ciStorePass = System.getenv("KEYSTORE_PASSWORD")
+val ciKeyAlias = System.getenv("KEY_ALIAS")
+val ciKeyPass = System.getenv("KEY_PASSWORD")
+val hasCiSigning = !ciKeystoreB64.isNullOrBlank() && !ciStorePass.isNullOrBlank()
+
+val localKs = rootProject.file("app/local-audio-release.jks")
+val localSecrets = rootProject.file(".secrets")
+fun secret(name: String): String? =
+    runCatching {
+        val f = localSecrets.resolve("$name.txt")
+        if (f.exists()) f.readText().trim().ifBlank { null } else null
+    }.getOrNull()
+val useLocalSigning = !hasCiSigning && localKs.exists() && secret("KEYSTORE_PASSWORD") != null
 
 android {
     namespace = "com.samge.kcourseaudio"
@@ -13,14 +32,44 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = 1
-        versionName = "1.0.0"
+        versionName = "v1.0.0"
+    }
+
+    signingConfigs {
+        if (hasCiSigning) {
+            create("ci") {
+                val tmp = File.createTempFile("local-audio", ".jks")
+                tmp.writeBytes(Base64.getDecoder().decode(ciKeystoreB64))
+                storeFile = tmp
+                storePassword = ciStorePass
+                keyAlias = ciKeyAlias
+                keyPassword = ciKeyPass ?: ciStorePass
+            }
+        } else if (useLocalSigning) {
+            create("localRelease") {
+                storeFile = localKs
+                storePassword = secret("KEYSTORE_PASSWORD")
+                keyAlias = secret("KEY_ALIAS") ?: "local-audio"
+                keyPassword = secret("KEY_PASSWORD") ?: secret("KEYSTORE_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            // 个人使用：release 直接用 debug 签名，出可安装包
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = when {
+                hasCiSigning -> signingConfigs.getByName("ci")
+                useLocalSigning -> signingConfigs.getByName("localRelease")
+                else -> signingConfigs.getByName("debug")
+            }
+        }
+        debug {
+            // local test builds use the release key when present — same signature as
+            // GitHub releases, so they install as updates over release APKs
+            if (useLocalSigning) {
+                signingConfig = signingConfigs.getByName("localRelease")
+            }
         }
     }
     compileOptions {
@@ -32,6 +81,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

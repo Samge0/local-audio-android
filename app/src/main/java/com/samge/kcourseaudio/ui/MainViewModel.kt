@@ -438,13 +438,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun unzipLocal(zip: File, target: File): Pair<Int, Int> {
-        val zis = java.util.zip.ZipInputStream(zip.inputStream().buffered())
-        zis.use {
+        // GBK charset：Windows 打包的中文 zip（无 UTF-8 标志位）正确解码；标准 UTF-8 包不受影响
+        val zis = java.util.zip.ZipInputStream(zip.inputStream().buffered(),
+            java.nio.charset.Charset.forName("GBK"))
+        try {
             var added = 0
             var skipped = 0
             while (true) {
                 val e = zis.nextEntry ?: break
-                val name = e.name
+                val name = com.samge.kcourseaudio.data.ZipImporter.fixZipName(e.name)
                 if (e.isDirectory) {
                     zis.closeEntry()
                     continue
@@ -475,6 +477,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 zis.closeEntry()
             }
             return Pair(added, skipped)
+        } finally {
+            zis.close()
         }
     }
 
@@ -522,11 +526,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         playSeq = seq
     }
 
-    fun toggleSub(): Boolean {
+    /** 返回值：0=正常切换；1=无字幕提示；2=无权限（已弹引导窗，不切换状态）。 */
+    fun toggleSub(): Int {
         val cur = ui.items.firstOrNull { it.id == currentId() }
-        if (cur?.sub == null) return false
+        if (cur?.sub == null) return 1
+        // 开启方向需要悬浮窗权限；未授权时不切换状态，弹引导窗
+        if (!subOn && !android.provider.Settings.canDrawOverlays(getApplication())) {
+            showOverlayPerm = true
+            return 2
+        }
         applySubOn(!subOn)
-        return true
+        return 0
     }
 
     /** 字幕开关：控制悬浮窗服务 + 桥状态。 */
@@ -543,13 +553,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** 幂等：字幕开启且当前曲目有字幕时启动悬浮窗（权限缺失时提示一次）。 */
+    /** 悬浮窗权限缺失 → UI 弹引导窗（带跳转入口）。 */
+    var showOverlayPerm by mutableStateOf(false)
+        private set
+
+    /** 幂等：字幕开启且当前曲目有字幕时启动悬浮窗；权限缺失时触发引导弹窗。 */
     fun ensureOverlayStarted() {
         if (!subOn) return
         if (!android.provider.Settings.canDrawOverlays(getApplication())) {
             if (!overlayPermAsked) {
                 overlayPermAsked = true
-                toast("如需字幕悬浮窗，请授予「显示在其他应用上层」权限")
+                showOverlayPerm = true
             }
             return
         }
@@ -558,13 +572,29 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
     private var overlayPermAsked = false
 
+    /** 跳转到本应用的「显示在其他应用上层」系统设置页。 */
+    fun openOverlaySettings(onOpen: () -> Unit) {
+        val ctx = getApplication<Application>()
+        runCatching {
+            ctx.startActivity(android.content.Intent(
+                android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                android.net.Uri.parse("package:" + ctx.packageName)
+            ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+            onOpen()
+        }
+    }
+
+    fun dismissOverlayPerm() {
+        showOverlayPerm = false
+    }
+
     private fun startOverlayService() {
         val ctx = getApplication<Application>()
         if (android.provider.Settings.canDrawOverlays(ctx)) {
             ctx.startService(android.content.Intent(ctx,
                 com.samge.kcourseaudio.player.SubtitleOverlayService::class.java))
         } else {
-            toast("请授予悬浮窗权限（设置 → 应用 → 音频播放器 → 显示在其他应用上层）")
+            showOverlayPerm = true
         }
     }
 

@@ -1,4 +1,4 @@
-package com.samge.kcourseaudio.ui
+package com.samge.localaudio.ui
 
 import android.app.Application
 import android.content.ComponentName
@@ -16,18 +16,18 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import com.google.common.util.concurrent.MoreExecutors
-import com.samge.kcourseaudio.data.DirMigrator
-import com.samge.kcourseaudio.data.ImportState
-import com.samge.kcourseaudio.data.Library
-import com.samge.kcourseaudio.data.MigrateResult
-import com.samge.kcourseaudio.data.PosStore
-import com.samge.kcourseaudio.data.SettingsStore
-import com.samge.kcourseaudio.data.Subtitle
-import com.samge.kcourseaudio.data.SubtitleBridge
-import com.samge.kcourseaudio.data.Track
-import com.samge.kcourseaudio.data.ZipImporter
-import com.samge.kcourseaudio.player.PlayerService
-import com.samge.kcourseaudio.util.Fmt
+import com.samge.localaudio.data.DirMigrator
+import com.samge.localaudio.data.ImportState
+import com.samge.localaudio.data.Library
+import com.samge.localaudio.data.MigrateResult
+import com.samge.localaudio.data.PosStore
+import com.samge.localaudio.data.SettingsStore
+import com.samge.localaudio.data.Subtitle
+import com.samge.localaudio.data.SubtitleBridge
+import com.samge.localaudio.data.Track
+import com.samge.localaudio.data.ZipImporter
+import com.samge.localaudio.player.PlayerService
+import com.samge.localaudio.util.Fmt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -127,7 +127,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ---------- 播放控制 ----------
-    private var curCues: List<com.samge.kcourseaudio.data.Cue> = emptyList()
+    private var curCues: List<com.samge.localaudio.data.Cue> = emptyList()
 
     fun play(track: Track) {
         val c = controller ?: return
@@ -446,7 +446,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             var skipped = 0
             while (true) {
                 val e = zis.nextEntry ?: break
-                val name = com.samge.kcourseaudio.data.ZipImporter.fixZipName(e.name)
+                val name = com.samge.localaudio.data.ZipImporter.fixZipName(e.name)
                 if (e.isDirectory) {
                     zis.closeEntry()
                     continue
@@ -455,8 +455,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 val ext = base.substringAfterLast('.', "").lowercase()
                 if (base.startsWith("._") || base.startsWith(".") ||
                     name.contains("__MACOSX") ||
-                    ext !in com.samge.kcourseaudio.data.Library.AUDIO_EXT
-                    && ext !in com.samge.kcourseaudio.data.Library.SUB_EXTS) {
+                    ext !in com.samge.localaudio.data.Library.AUDIO_EXT
+                    && ext !in com.samge.localaudio.data.Library.SUB_EXTS) {
                     zis.closeEntry()
                     continue
                 }
@@ -548,6 +548,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             SubtitleBridge.setShow(false)
             stopOverlayService()
         } else {
+            SubtitleBridge.folded = false   // 新会话默认展开显示
             SubtitleBridge.setShow(true)
             startOverlayService()
         }
@@ -592,7 +593,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val ctx = getApplication<Application>()
         if (android.provider.Settings.canDrawOverlays(ctx)) {
             ctx.startService(android.content.Intent(ctx,
-                com.samge.kcourseaudio.player.SubtitleOverlayService::class.java))
+                com.samge.localaudio.player.SubtitleOverlayService::class.java))
         } else {
             showOverlayPerm = true
         }
@@ -602,7 +603,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val ctx = getApplication<Application>()
         runCatching {
             ctx.stopService(android.content.Intent(ctx,
-                com.samge.kcourseaudio.player.SubtitleOverlayService::class.java))
+                com.samge.localaudio.player.SubtitleOverlayService::class.java))
         }
     }
 

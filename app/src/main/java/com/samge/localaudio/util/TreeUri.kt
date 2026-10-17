@@ -1,4 +1,4 @@
-package com.samge.kcourseaudio.util
+package com.samge.localaudio.util
 
 import android.net.Uri
 import android.os.Environment

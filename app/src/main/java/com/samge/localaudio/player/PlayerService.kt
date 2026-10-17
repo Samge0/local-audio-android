@@ -1,4 +1,4 @@
-package com.samge.kcourseaudio.player
+package com.samge.localaudio.player
 
 import android.content.Intent
 import androidx.media3.common.AudioAttributes

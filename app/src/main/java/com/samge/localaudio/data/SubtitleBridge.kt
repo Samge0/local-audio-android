@@ -1,4 +1,4 @@
-package com.samge.kcourseaudio.data
+package com.samge.localaudio.data
 
 /** 字幕悬浮窗状态桥（VM 推送，Service 读取）。 */
 object SubtitleBridge {

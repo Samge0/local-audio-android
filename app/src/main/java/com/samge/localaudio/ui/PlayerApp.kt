@@ -1,4 +1,4 @@
-package com.samge.kcourseaudio.ui
+package com.samge.localaudio.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloat
@@ -56,10 +56,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.samge.kcourseaudio.data.ImportState
-import com.samge.kcourseaudio.data.MigrateResult
-import com.samge.kcourseaudio.data.Track
-import com.samge.kcourseaudio.util.Fmt
+import com.samge.localaudio.data.ImportState
+import com.samge.localaudio.data.MigrateResult
+import com.samge.localaudio.data.Track
+import com.samge.localaudio.util.Fmt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -264,7 +264,7 @@ private fun MacTitleBar(onImport: () -> Unit, onDir: () -> Unit) {
         // 中：标题（weight 伸展，视觉居中）+ 动态版本号
         Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
             Text(
-                "音频播放器 " + com.samge.kcourseaudio.BuildConfig.VERSION_NAME,
+                "音频播放器 " + com.samge.localaudio.BuildConfig.VERSION_NAME,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

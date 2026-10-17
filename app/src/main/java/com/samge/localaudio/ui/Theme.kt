@@ -1,4 +1,4 @@
-package com.samge.kcourseaudio.ui
+package com.samge.localaudio.ui
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme

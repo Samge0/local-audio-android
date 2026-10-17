@@ -1,4 +1,4 @@
-package com.samge.kcourseaudio
+package com.samge.localaudio
 
 import android.content.Intent
 import android.net.Uri
@@ -10,10 +10,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import com.samge.kcourseaudio.ui.KAudioTheme
-import com.samge.kcourseaudio.ui.MainViewModel
-import com.samge.kcourseaudio.ui.PlayerApp
-import com.samge.kcourseaudio.util.TreeUri
+import com.samge.localaudio.ui.KAudioTheme
+import com.samge.localaudio.ui.MainViewModel
+import com.samge.localaudio.ui.PlayerApp
+import com.samge.localaudio.util.TreeUri
 
 class MainActivity : ComponentActivity() {
 

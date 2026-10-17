@@ -1,4 +1,4 @@
-package com.samge.kcourseaudio.data
+package com.samge.localaudio.data
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

@@ -1,6 +1,6 @@
-package com.samge.kcourseaudio.data
+package com.samge.localaudio.data
 
-import com.samge.kcourseaudio.util.Fmt
+import com.samge.localaudio.util.Fmt
 import java.io.File
 import java.util.Locale
 

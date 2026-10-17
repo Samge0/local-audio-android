@@ -1,4 +1,4 @@
-package com.samge.kcourseaudio.player
+package com.samge.localaudio.player
 
 import android.annotation.SuppressLint
 import android.app.Service
@@ -15,7 +15,7 @@ import android.view.MotionEvent
 import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.TextView
-import com.samge.kcourseaudio.data.SubtitleBridge
+import com.samge.localaudio.data.SubtitleBridge
 import kotlin.math.abs
 
 /**
@@ -47,6 +47,7 @@ class SubtitleOverlayService : Service() {
 
     @SuppressLint("ClickableViewAccessibility")
     private fun createOverlay() {
+        SubtitleBridge.folded = false   // 服务（重）启动 = 新会话，恢复展开形态
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
         fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 

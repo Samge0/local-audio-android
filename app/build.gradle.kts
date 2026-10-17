@@ -24,14 +24,14 @@ fun secret(name: String): String? =
 val useLocalSigning = !hasCiSigning && localKs.exists() && secret("KEYSTORE_PASSWORD") != null
 
 android {
-    namespace = "com.samge.kcourseaudio"
+    namespace = "com.samge.localaudio"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.samge.kcourseaudio"
+        applicationId = "com.samge.localaudio"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
+        versionCode = 100
         versionName = "v1.0.0"
     }
 
